@@ -2,6 +2,7 @@ from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 import requests
 from bs4 import BeautifulSoup
+from pprint import pprint
 
 headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.12785 YaBrowser/13.12.1599.12785 Safari/537.36'
@@ -42,19 +43,19 @@ def vacancy_parse(page):
                 data_list_money = data_money.split()
                 dict_money['currency'] = data_list_money[-1]
                 if data_money.startswith('от'):
-                    dict_money['min_salary'] = data_list_money[1]
+                    dict_money['min_salary'] = int(data_list_money[1])
                 elif data_money.startswith('до'):
-                    dict_money['max_salary'] = data_list_money[1]
+                    dict_money['max_salary'] = int(data_list_money[1])
                 elif len(data_list_money) == 4:
-                    dict_money['min_salary'] = data_list_money[0]
-                    dict_money['max_salary'] = data_list_money[2]
+                    dict_money['min_salary'] = int(data_list_money[0])
+                    dict_money['max_salary'] = int(data_list_money[2])
             else:
                 dict_money['min_salary'] = None
                 dict_money['max_salary'] = None
                 dict_money['currency'] = None
-
             vacancy_dict['salary'] = dict_money
             result_list.append(vacancy_dict)
+
     write_to_db(result_list)
 
 
@@ -66,6 +67,15 @@ def write_to_db(result):
             vacancy.insert_one(res)
         except DuplicateKeyError:
             pass
+    sample_to_base(vacancy)
+
+
+def sample_to_base(vacancy):
+        entered_value = int(input('Введите значение: '))
+        for vac in vacancy.find({'$or': [{'salary.min_salary': {'$gt': entered_value}},
+                                         {'salary.max_salary': {'$gt': entered_value}}]}):
+            pprint(vac)
+
 
 
 params = {'text': request_user}
