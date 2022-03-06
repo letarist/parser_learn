@@ -1,24 +1,31 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import NoSuchElementException, InvalidArgumentException
+# from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError
 
-# под win executable_path не указываю
-driver = webdriver.Chrome()
+# Установил линукс, буду привыкать теперь
+
+# s = Service('./chromedriver')
+# driver = webdriver.Chrome(service=s)
+driver = webdriver.Chrome(
+    ChromeDriverManager().install())  # Проверил - так тоже работает, но ругается на то, что внутри этого объекта используется executible_path
 driver.get('https://account.mail.ru/login')
 
 
 def authorization(arg):
     arg.implicitly_wait(5)
     enter_login = arg.find_element(By.XPATH, "//input[@name='username']")
-    enter_login.send_keys(LOGIN)
+    enter_login.send_keys(YOU_EMAIL)
     arg.implicitly_wait(5)
     button_enter = arg.find_element(By.XPATH, "//span[text()='Ввести пароль']")
     button_enter.click()
     arg.implicitly_wait(5)
     enter_pass = arg.find_element(By.XPATH, "//input[@name='password']")
-    enter_pass.send_keys(PASS)
+    enter_pass.send_keys(YOU_PASSWORD)
     button_enter = arg.find_element(By.XPATH, "//span[text()='Войти']")
     button_enter.click()
     scroll()
@@ -33,7 +40,6 @@ def scroll(res_set=None):
         return parse(res_set)
     else:
         res_set.update(link_message)
-        print(res_set)
         action = ActionChains(driver)
         action.move_to_element(message[-1])
         action.perform()
@@ -44,17 +50,32 @@ def parse(links):
     result_list = []
     result = {}
     for link in links:
-        driver.get(link)
-        driver.implicitly_wait(10)
-        result['from'] = driver.find_element(By.XPATH,
-                                             "//div[@class='letter__author']/span[@class='letter-contact']/text()")
-        result['time'] = driver.find_element(By.XPATH, "//div[@class='letter__date']/text()")
-        result['title'] = driver.find_element(By.XPATH, "//h2[@class='thread-subject']/text()")
-        result['content'] = driver.find_element(By.XPATH, "//div[contains(@class,'body-content')]").text
-        driver.implicitly_wait(60)
-    return result
+        try:
+            driver.get(link)
+            driver.implicitly_wait(10)
+            result['_id'] = link
+            result['from'] = driver.find_element(By.CLASS_NAME, 'letter-contact').text
+            result['time'] = driver.find_element(By.CLASS_NAME, 'letter__date').text
+            result['title'] = driver.find_element(By.CLASS_NAME, 'thread-subject').text
+            result['content'] = driver.find_element(By.XPATH, "//div[contains(@class,'body-content')]").text
+            driver.implicitly_wait(60)
+            result_list.append(result)
+            write_to_db(result_list)
+        except (NoSuchElementException, InvalidArgumentException):
+            pass
+
+    driver.close()
+
+
+def write_to_db(result):
+    client = MongoClient()
+    email_info = client['info_email']
+    item = email_info.item
+    for res in result:
+        try:
+            item.insert_one(res)
+        except DuplicateKeyError:
+            pass
 
 
 authorization(driver)
-
-
