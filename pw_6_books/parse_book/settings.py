@@ -61,7 +61,7 @@ COOKIES_ENABLED = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'parse_book.pipelines.ParseBookPipeline': 300,
+    'parse_book.pipelines.ParseBookPipeline': 300
 }
 # HTTPERROR_ALLOWED_CODES = [404]
 
