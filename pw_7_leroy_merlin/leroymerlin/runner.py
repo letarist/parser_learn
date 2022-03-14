@@ -9,6 +9,6 @@ if __name__ == '__main__':
     spider_settings.setmodule(settings)
 
     process = CrawlerProcess(spider_settings)
-    process.crawl(LeroymerlinparseSpider)
+    process.crawl(LeroymerlinparseSpider, search=input('Введите запрос : '))
 
     process.start()

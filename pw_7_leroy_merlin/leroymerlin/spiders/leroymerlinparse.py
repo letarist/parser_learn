@@ -1,12 +1,16 @@
 import scrapy
 from scrapy.http import HtmlResponse
 from leroymerlin.items import LeroymerlinItem
+from scrapy.loader import ItemLoader
 
 
 class LeroymerlinparseSpider(scrapy.Spider):
     name = 'leroymerlinparse'
     allowed_domains = ['leroymerlin.ru']
-    start_urls = ['https://leroymerlin.ru/search/?q=%D0%9B%D0%BE%D0%BF%D0%B0%D1%82%D0%B0']
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.start_urls = [f'https://leroymerlin.ru/search/?q={kwargs.get("search")}']
 
     def parse(self, response: HtmlResponse):
         next_page = response.xpath("//a[@data-qa-pagination-item='right']/@href").get()
@@ -17,7 +21,10 @@ class LeroymerlinparseSpider(scrapy.Spider):
             yield response.follow(link, callback=self.parse_file)
 
     def parse_file(self, response: HtmlResponse):
-        title = response.xpath("//h1[@slot='title']/text()").get()
-        price = response.xpath("//uc-pdp-price-view[@slot='primary-price']/span/text()").getall()
-        url = response.url
-        yield LeroymerlinItem(title=title, price=price, url=url)
+        loader = ItemLoader(item=LeroymerlinItem(), response=response)
+        loader.add_xpath('title', "//h1[@slot='title']/text()")
+        loader.add_xpath('price', "//uc-pdp-price-view[@slot='primary-price']/span/text()")
+        loader.add_xpath('currency', "//uc-pdp-price-view[@slot='primary-price']/span/text()")
+        loader.add_value('url', response.url)
+        loader.add_xpath('photos', "//source[contains(@media,'(min-width: 1024px)')]/@srcset")
+        yield loader.load_item()
